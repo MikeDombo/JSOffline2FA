@@ -1,0 +1,213 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<title>Online TOTP 2-Factor Authentication</title>
+		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha256-gL1ibrbVcRIHKlCO5OXOPC/lZz/gpdApgQAzskqqXp8=" crossorigin="anonymous"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+		
+		<!-- BEGIN QR Code Library  !-->
+		<script type="text/javascript" src="src/grid.js"></script>
+		<script type="text/javascript" src="src/version.js"></script>
+		<script type="text/javascript" src="src/detector.js"></script>
+		<script type="text/javascript" src="src/formatinf.js"></script>
+		<script type="text/javascript" src="src/errorlevel.js"></script>
+		<script type="text/javascript" src="src/bitmat.js"></script>
+		<script type="text/javascript" src="src/datablock.js"></script>
+		<script type="text/javascript" src="src/bmparser.js"></script>
+		<script type="text/javascript" src="src/datamask.js"></script>
+		<script type="text/javascript" src="src/rsdecoder.js"></script>
+		<script type="text/javascript" src="src/gf256poly.js"></script>
+		<script type="text/javascript" src="src/gf256.js"></script>
+		<script type="text/javascript" src="src/decoder.js"></script>
+		<script type="text/javascript" src="src/qrcode.js"></script>
+		<script type="text/javascript" src="src/findpat.js"></script>
+		<script type="text/javascript" src="src/alignpat.js"></script>
+		<script type="text/javascript" src="src/databr.js"></script>
+		<!-- END QR Code Library  !-->
+		
+		<script>
+			function onload() {
+				codes = JSON.parse(localStorage.getItem("allCodes"));
+				if(codes !== null){
+					$.each(codes, function(i,v){
+						addKeyHTML(v["name"], v["secret"]);
+					});
+				}
+				setInterval(refresh, 100);
+			}
+			
+			// Given a secret key "K" and a timestamp "t" (in 30s units since the
+			// beginning of the epoch), return a TOTP code.
+			function totp(K,t) {
+				function sha1(C){
+					function L(x,b){return x<<b|x>>>32-b;}
+					var l=C.length,D=C.concat([1<<31]),V=0x67452301,W=0x88888888,
+					Y=271733878,X=Y^W,Z=0xC3D2E1F0;W^=V;
+					do D.push(0);while(D.length+1&15);D.push(32*l);
+					while (D.length){
+					var E=D.splice(0,16),a=V,b=W,c=X,d=Y,e=Z,f,k,i=12;
+					function I(x){var t=L(a,5)+f+e+k+E[x];e=d;d=c;c=L(b,30);b=a;a=t;}
+					for(;++i<77;)E.push(L(E[i]^E[i-5]^E[i-11]^E[i-13],1));
+					k=0x5A827999;for(i=0;i<20;I(i++))f=b&c|~b&d;
+					k=0x6ED9EBA1;for(;i<40;I(i++))f=b^c^d;
+					k=0x8F1BBCDC;for(;i<60;I(i++))f=b&c|b&d|c&d;
+					k=0xCA62C1D6;for(;i<80;I(i++))f=b^c^d;
+					V+=a;W+=b;X+=c;Y+=d;Z+=e;}
+					return[V,W,X,Y,Z];
+				}
+				var k=[],l=[],i=0,j=0,c=0;
+				for (;i<K.length;){
+				c=c*32+'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'.
+				indexOf(K.charAt(i++).toUpperCase());
+				if((j+=5)>31)k.push(Math.floor(c/(1<<(j-=32)))),c&=31;}
+				j&&k.push(c<<(32-j));
+				for(i=0;i<16;++i)l.push(0x6A6A6A6A^(k[i]=k[i]^0x5C5C5C5C));
+				var s=sha1(k.concat(sha1(l.concat([0,t])))),o=s[4]&0xF;
+				return ((s[o>>2]<<8*(o&3)|(o&3?s[(o>>2)+1]>>>8*(4-o&3):0))&-1>>>1)%1000000;
+			}
+			
+			var lastepochseconds;
+			var lasttimestamp;
+
+			function refresh() {
+				var e = Math.floor(new Date().getTime()/1000);
+				var t = Math.floor(e/30);
+
+				// If TOTP code has changed (either because of user edits, or
+				// because of elapsed time), update the user interface.
+				if (e != lastepochseconds || t != lasttimestamp) {
+					lastepochseconds = e;
+					lasttimestamp = t;
+					var rem = 30 - (e - (t*30)); // Remaining time counter
+
+					$("#authenticator-group").find("tr").each(function(){
+						var secret = $(this).data("key");
+						if(!(secret == null || secret == "")){
+							$(this).find(".code-field").html(runTOTP(secret));
+						}
+					});
+				}
+			}
+			
+			function runTOTP(k){
+				var e = Math.floor(new Date().getTime()/1000);
+				var t = Math.floor(e/30);
+				k = k.replace(/[^ABCDEFGHIJKLMNOPQRSTUVWXYZ234567]/gi, '');
+				var code = totp(k,t);
+				code = "" + code; // convert to string
+				for (var i=0; i<6-code.length; i++) {
+					code = "0" + code;
+				}
+				code = code.substring(0, 3) + "&nbsp;" + code.substring(3, 6);
+				return code;
+			}
+			
+			function addKey(){
+				var name = $("#name").val()
+				var secret = $("#secret").val();
+				addKeyHTML(name, secret);
+			}
+			
+			function addKeyHTML(name, secret){
+				if(!alreadyInTable(name, secret)){
+					$("#authenticator-group").append("<tr data-name='"+name+"' data-key='"+secret+"'><td>"+name+"</td><td class='code-field'>"+runTOTP(secret)+"</td></tr>");
+				}
+				if(!alreadyInStorage(name, secret)){
+					addToStorage(name, secret);
+				}
+			}
+			
+			function alreadyInTable(name, secret){
+				var returner = false;
+				$("#authenticator-group").find("tr").each(function(){
+					if(secret == $(this).data("key")){
+						returner = true;
+					}
+				});
+				return returner;
+			}
+			
+			function alreadyInStorage(name, secret){
+				codes = JSON.parse(localStorage.getItem("allCodes"));
+				if(codes == null){
+					return false;
+				}
+				var returner = false;
+				$.each(codes, function(i,v){
+					if(v["secret"] == secret){
+						returner = true;
+					}
+				});
+				return returner;
+			}
+			
+			function addToStorage(name, secret){
+				var codes = JSON.parse(localStorage.getItem("allCodes"));
+				if(codes == null){
+					codes = [];
+				}
+				codes.push({"secret":secret, "name":name});
+				localStorage.setItem("allCodes", JSON.stringify(codes));
+			}
+			
+			function qrCallback(a){
+				if(a.indexOf("error decoding QR") > -1){
+					alert("Could not decode QR code, sorry");
+					return;
+				}
+				var html="<br>";
+				html+="<b>"+a+"</b><br><br>";
+				document.getElementById("result").innerHTML=html;
+				var findName = /totp\/([^?]+)[?&]secret=(.*)/gi
+				var findSecret = /totp\/[^?]+[?&]secret=([^?^&]+)/gi
+				var name = findName.exec(a)[1];
+				var secret = findSecret.exec(a)[1];
+				addKeyHTML(name, secret);
+			}
+			
+			function handleFiles(f){
+				for(var i =0;i<f.length;i++){
+					var reader = new FileReader();
+					reader.onload = (function(theFile) {
+						return function(e) {
+							qrcode.decode(e.target.result);
+						};
+					})(f[i]);
+					reader.readAsDataURL(f[i]);	
+				}
+			}
+			
+			qrcode.callback = qrCallback;
+		</script>
+	</head>
+	<body onpageshow="onload()">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="col-md-4 mt-5">
+					<h1 class="display-4">Online 2FA</h1>
+					<form name="input-keys" class="form-inline" onsubmit="addKey()" action="javascript:void(0);">
+						<input type="text" placeholder="Name" id="name" class="form-control mb-2 mr-sm-2 mb-sm-0"></input>
+						<input type="text" placeholder="Enter Secret Key"  id="secret" class="form-control mb-2 mr-sm-2 mb-sm-0"></input>
+						<button type="submit" class="btn btn-success">Add</button>
+					</form>
+					<h4 class="pt-5">QR Code Entry</h4>
+					<input type="file" onchange="handleFiles(this.files)">
+					<div id="result"></div>
+				</div>
+				<div class="col-md-8 mt-5">
+					<table class="table" id="authenticator-group">
+						<thead>
+							<tr>
+								<th>Site</th>
+								<th>Code</th>
+							</tr>
+						</thead>
+						
+					</table>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
