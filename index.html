@@ -162,7 +162,7 @@
 				document.getElementById("result").innerHTML=html;
 				var findName = /totp\/([^?]+).*[?&]secret=(.*)/gi
 				var findSecret = /totp\/[^?]+.*[?&]secret=([^?^&]+)/gi
-				var name = findName.exec(a)[1];
+				var name = decodeURIComponent(findName.exec(a)[1]);
 				var secret = findSecret.exec(a)[1];
 				addKeyHTML(name, secret);
 			}
