@@ -160,8 +160,8 @@
 				var html="<br>";
 				html+="<b>"+a+"</b><br><br>";
 				document.getElementById("result").innerHTML=html;
-				var findName = /totp\/([^?]+)[?&]secret=(.*)/gi
-				var findSecret = /totp\/[^?]+[?&]secret=([^?^&]+)/gi
+				var findName = /totp\/([^?]+).*[?&]secret=(.*)/gi
+				var findSecret = /totp\/[^?]+.*[?&]secret=([^?^&]+)/gi
 				var name = findName.exec(a)[1];
 				var secret = findSecret.exec(a)[1];
 				addKeyHTML(name, secret);
