@@ -1,27 +1,50 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>Online TOTP 2-Factor Authentication</title>
 		<link href="src/bootstrap.min.css" rel="stylesheet">
 		<script src="src/jquery.min.js"></script>
 		<script src="src/tether.min.js"></script>
 		<script src="src/bootstrap.min.js"></script>
-		<script type="text/javascript" src="src/qrcode.min.js"></script>
+		<script src="src/qrcode.min.js"></script>
+		<style>
+			html {
+				position: relative;
+				min-height: 100%;
+			}
+			body {
+				margin-bottom: 6em;
+			}
+			.footer {
+				position: absolute;
+				bottom: 3em;
+				width: 100%;
+				height: 3em;
+				line-height: 1em;
+			}
+		</style>
 		
 		<script>
-			function onload() {
+			$(document).ready (function(){
+				$(".alert").hide();
+			});
+
+			function onload(){
 				codes = JSON.parse(localStorage.getItem("allCodes"));
 				if(codes !== null){
 					$.each(codes, function(i,v){
 						addKeyHTML(v["name"], v["secret"]);
 					});
 				}
+				$(function(){$('[data-toggle="tooltip"]').tooltip();});
 				setInterval(refresh, 100);
 			}
 			
 			// Given a secret key "K" and a timestamp "t" (in 30s units since the
 			// beginning of the epoch), return a TOTP code.
-			function totp(K,t) {
+			function totp(K,t){
 				function sha1(C){
 					function L(x,b){return x<<b|x>>>32-b;}
 					var l=C.length,D=C.concat([1<<31]),V=0x67452301,W=0x88888888,
@@ -52,21 +75,27 @@
 			var lastepochseconds;
 			var lasttimestamp;
 
-			function refresh() {
+			function refresh(){
 				var e = Math.floor(new Date().getTime()/1000);
 				var t = Math.floor(e/30);
+				var en = new Date().getTime()/1000;
+				
+				var rem = 30-(en-(t*30));
+				var percent = (rem/30)*100;
+				$(".progress-bar").width(percent+"%");
+				$(".progress-bar").attr("aria-valuenow", percent);
+				$("#countdown").text(Math.round(rem));
 
 				// If TOTP code has changed (either because of user edits, or
 				// because of elapsed time), update the user interface.
 				if (e != lastepochseconds || t != lasttimestamp) {
 					lastepochseconds = e;
 					lasttimestamp = t;
-					var rem = 30 - (e - (t*30)); // Remaining time counter
 
 					$("#authenticator-group").find("tr").each(function(){
 						var secret = $(this).data("key");
 						if(!(secret == null || secret == "")){
-							$(this).find(".code-field").html(runTOTP(secret));
+							$(this).find(".code-field").html(addNBSP(runTOTP(secret)));
 						}
 					});
 				}
@@ -81,8 +110,11 @@
 				for (var i=0; i<6-code.length; i++) {
 					code = "0" + code;
 				}
-				code = code.substring(0, 3) + "&nbsp;" + code.substring(3, 6);
 				return code;
+			}
+			
+			function addNBSP(c){
+				return c.substring(0, 3) + "&nbsp;" + c.substring(3, 6);
 			}
 			
 			function addKey(){
@@ -91,13 +123,40 @@
 				addKeyHTML(name, secret);
 			}
 			
+			function copyCode(e){
+				var textArea = document.createElement("textarea");
+				textArea.style.position = 'fixed';
+				textArea.style.top = 0;
+				textArea.style.left = 0;
+				textArea.style.width = '1px';
+				textArea.style.height = '1px';
+				textArea.style.padding = 0;
+				textArea.style.border = 'none';
+				textArea.style.outline = 'none';
+				textArea.style.boxShadow = 'none';
+				textArea.style.background = 'transparent';
+				textArea.style.resize = 'none';
+				
+				textArea.value = runTOTP($(e).data("key"));
+				document.body.appendChild(textArea);
+				textArea.select();
+				try{
+					document.execCommand('copy');
+					$(".alert").alert();
+					$(".alert-text").text("Copy Successful!");
+					$(".alert").fadeTo(3000, 500).slideUp(500, function(){$(".alert").slideUp(500);});
+				} 
+				catch(err){console.log(err);}
+			}
+			
 			function addKeyHTML(name, secret){
 				if(!alreadyInTable(name, secret)){
-					$("#authenticator-group").append("<tr data-name='"+name+"' data-key='"+secret+"'><td>"+name+"</td><td class='code-field'>"+runTOTP(secret)+"</td></tr>");
+					$("#authenticator-group").append("<tr data-toggle='tooltip' title='Click to copy' data-name='"+name+"' data-key='"+secret+"' onclick='copyCode(this)'><td>"+name+"</td><td class='code-field'>"+addNBSP(runTOTP(secret))+"</td></tr>");
 				}
 				if(!alreadyInStorage(name, secret)){
 					addToStorage(name, secret);
 				}
+				$(function(){$('[data-toggle="tooltip"]').tooltip();});
 			}
 			
 			function alreadyInTable(name, secret){
@@ -165,6 +224,12 @@
 	</head>
 	<body onpageshow="onload()">
 		<div class="container-fluid">
+			<div class="alert alert-success alert-dismissible" role="alert">
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+				<div class="alert-text"></div>
+			</div>
 			<div class="row">
 				<div class="col-md-4 mt-5">
 					<h1 class="display-4">Online 2FA</h1>
@@ -185,10 +250,17 @@
 								<th>Code</th>
 							</tr>
 						</thead>
-						
 					</table>
 				</div>
 			</div>
 		</div>
+		<footer class="footer">
+			<div class="container-fluid">
+				<h1 class="display-5 d-flex justify-content-center" id="countdown">30</h1>
+				<div class="progress">
+					<div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="height:1em"></div>
+				</div>
+			</div>
+		</footer>
 	</body>
 </html>
