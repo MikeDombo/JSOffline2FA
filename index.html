@@ -107,7 +107,7 @@
 				k = k.replace(/[^ABCDEFGHIJKLMNOPQRSTUVWXYZ234567]/gi, '');
 				var code = totp(k,t);
 				code = "" + code; // convert to string
-				for (var i=0; i<6-code.length; i++) {
+				while(code.length < 6) {
 					code = "0" + code;
 				}
 				return code;
