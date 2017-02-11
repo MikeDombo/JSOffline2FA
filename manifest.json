@@ -1,6 +1,28 @@
 {
   "short_name": "JSOffline2FA",
   "name": "JavaScript 2 Factor Authenticator",
+  "icons": [
+    {
+      "src": "img/time-lock-48.png",
+      "type": "image/png",
+      "sizes": "48x48"
+    },
+    {
+      "src": "img/time-lock-96.png",
+      "type": "image/png",
+      "sizes": "96x96"
+    },
+    {
+      "src": "img/time-lock-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+	{
+      "src": "img/time-lock-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
   "start_url": "index.html",
   "background_color": "#2196F3",
   "theme_color": "#0275d8",

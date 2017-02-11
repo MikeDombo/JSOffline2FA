@@ -1,6 +1,10 @@
 var CACHE_NAME = 'my-site-cache-v1';
 var urlsToCache = [
   'index.html',
+  'img/time-lock-48.png',
+  'img/time-lock-96.png',
+  'img/time-lock-192.png',
+  'img/time-lock-512.png',
   'src/bootstrap.min.css',
   'src/bootstrap.min.js',
   'src/jquery.min.js',
