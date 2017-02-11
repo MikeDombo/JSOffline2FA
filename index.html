@@ -4,6 +4,8 @@
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>Offline TOTP 2-Factor Authentication</title>
+		<link rel="manifest" href="manifest.json">
+		<meta name="theme-color" content="#0275d8">
 		<link href="src/bootstrap.min.css" rel="stylesheet">
 		<script src="src/jquery.min.js"></script>
 		<script src="src/tether.min.js"></script>
@@ -262,5 +264,18 @@
 				</div>
 			</div>
 		</footer>
+		<script>
+		if ('serviceWorker' in navigator) {
+			window.addEventListener('load', function() {
+				navigator.serviceWorker.register('sw.js').then(function(registration) {
+					// Registration was successful
+					console.log('ServiceWorker registration successful with scope: ', registration.scope);
+				}).catch(function(err) {
+					// registration failed :(
+					console.log('ServiceWorker registration failed: ', err);
+				});
+			});
+		}
+		</script>
 	</body>
 </html>

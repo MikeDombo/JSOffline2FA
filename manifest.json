@@ -1,0 +1,8 @@
+{
+  "short_name": "JSOffline2FA",
+  "name": "JavaScript 2 Factor Authenticator",
+  "start_url": "index.html",
+  "background_color": "#2196F3",
+  "theme_color": "#0275d8",
+  "display": "standalone"
+}
