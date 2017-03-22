@@ -203,7 +203,7 @@
 				try{
 					var codes = JSON.parse($("#import-export").val());
 					$.each(codes, function(i,v){
-						addKeyHTML(v["name"], v["secret"])
+						addKeyHTML(v["name"], v["secret"]);
 					});
 				}
 				catch(e){
