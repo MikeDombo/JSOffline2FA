@@ -194,6 +194,24 @@
 				localStorage.setItem("allCodes", JSON.stringify(codes));
 			}
 			
+			function exportCode(){
+				$("#import-export").val(localStorage.getItem("allCodes"));
+				$("#import-export").select();
+			}
+			
+			function importCode(){
+				try{
+					var codes = JSON.parse($("#import-export").val());
+					$.each(codes, function(i,v){
+						addKeyHTML(v["name"], v["secret"])
+					});
+				}
+				catch(e){
+					alert("Import error!\nInvalid JSON.");
+					console.log(e);
+				}
+			}
+			
 			function qrCallback(a){
 				if(a.indexOf("error decoding QR") > -1){
 					alert("Could not decode QR code, sorry");
@@ -243,6 +261,12 @@
 					<h4 class="pt-5">QR Code Entry</h4>
 					<input type="file" onchange="handleFiles(this.files)">
 					<div id="result"></div>
+					<h4 class="pt-5">Import/Export</h1>
+					<div class="form-group form-inline">
+						<input type="text" placeholder="" id="import-export" class="form-control mb-2 mr-sm-2 mb-sm-0"></input>
+						<button class="form-control btn btn-success mr-sm-2 mr-sm-0" onclick="importCode()">Import</button>
+						<button class="form-control btn btn-info mr-sm-2 mr-sm-0" onclick="exportCode()">Export</button>
+					</div>
 				</div>
 				<div class="col-md-8 mt-5">
 					<table class="table" id="authenticator-group">
